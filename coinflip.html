@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Coin Flip</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="card">
+  <h2>Coin Flip</h2>
+  <input id="username" placeholder="Your Username" /><br><br>
+  <div>
+    <button onclick="play(false)">Play (10 coins)</button>
+    <button onclick="play(true)">Double Down (20 coins)</button>
+  </div>
+  <div id="coin" style="font-size:100px; margin:20px;">🪙</div>
+  <p id="result"></p>
+</div>
+<audio id="winSound" src="assets/win.mp3"></audio>
+<audio id="loseSound" src="assets/lose.mp3"></audio>
+<audio id="flipSound" src="assets/flip.mp3"></audio>
+<script>
+async function play(doubleDown) {
+  const username = document.getElementById('username').value;
+  document.getElementById('flipSound').play();
+  const coin = document.getElementById('coin');
+  coin.style.transform = 'rotateY(0deg)';
+  for (let i = 0; i < 6; i++) {
+    await new Promise(r => setTimeout(r, 100));
+    coin.style.transform = 'rotateY(' + (i*60) + 'deg)';
+  }
+  const res = await fetch('/coinflip', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ username, doubleDown })
+  });
+  const data = await res.json();
+  document.getElementById('result').textContent = data.message;
+  if (data.message.includes("Player Wins")) {
+    document.getElementById('winSound').play();
+  } else {
+    document.getElementById('loseSound').play();
+  }
+}
+</script>
+</body>
+</html>

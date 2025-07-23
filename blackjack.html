@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><title>Play Blackjack</title></head>
+<body>
+<h2>Play Blackjack</h2>
+<input id="username" placeholder="Your Username" /><br><br>
+<button onclick="play(false)">Play (20 coins)</button>
+<button onclick="play(true)">Double Down (40 coins)</button>
+<p id="result"></p>
+<script>
+async function play(doubleDown) {
+  const username = document.getElementById('username').value;
+  const res = await fetch('/blackjack', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ username, doubleDown })
+  });
+  const data = await res.json();
+  document.getElementById('result').textContent = data.message;
+}
+</script>
+</body>
+</html>

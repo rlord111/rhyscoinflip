@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><title>Admin Panel</title></head>
+<body>
+<h2>Admin Panel</h2>
+<input id="admin" placeholder="Admin Email" /><br>
+<button onclick="load()">View Balances</button>
+<div id="output"></div>
+<script>
+async function load() {
+  const admin = document.getElementById('admin').value;
+  const res = await fetch('/admin', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ admin })
+  });
+  const data = await res.json();
+  const div = document.getElementById('output');
+  div.innerHTML = "<pre>" + data.message + "</pre>";
+}
+</script>
+</body>
+</html>
