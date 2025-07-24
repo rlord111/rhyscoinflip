@@ -1,100 +1,69 @@
 
-const express = require('express');
-const fs = require('fs');
+const express = require("express");
+const sqlite3 = require("sqlite3").verbose();
+const path = require("path");
 const app = express();
+const port = process.env.PORT || 3000;
+
+// Database setup
+const dbPath = path.resolve(__dirname, "data.db");
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error("❌ Failed to connect to SQLite DB:", err);
+  } else {
+    console.log("✅ Connected to SQLite DB");
+  }
+});
+
+// Middleware
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.urlencoded({ extended: true }));
 
-const adminEmail = "rhys.lord09@gmail.com";
+// Homepage route
+app.get("/", (req, res) => {
+  res.send("🎮 Welcome to Rhys Coin Flip!");
+});
 
-function updateBalance(username, delta) {
-  let lines = fs.readFileSync('balances.csv', 'utf8').split('\n').filter(l => l.trim());
-  let updated = false;
-  lines = lines.map((line, i) => {
-    if (i === 0) return line;
-    const [user, bal] = line.split(',');
-    if (user === username) {
-      updated = true;
-      return `${user},${parseInt(bal) + delta}`;
-    }
-    return line;
+// Health check
+app.get("/healthz", (req, res) => {
+  res.status(200).send("OK");
+});
+
+// Get player balance
+app.get("/balance/:player", (req, res) => {
+  const player = req.params.player;
+  db.get("SELECT balance FROM balances WHERE player = ?", [player], (err, row) => {
+    if (err) return res.status(500).json({ error: "DB error" });
+    res.json({ player, balance: row ? row.balance : 0 });
   });
-  if (!updated) lines.push(`${username},${delta}`);
-  fs.writeFileSync('balances.csv', lines.join('\n'));
-}
-
-function getBalance(username) {
-  const data = fs.readFileSync('balances.csv', 'utf8').split('\n');
-  for (let i = 1; i < data.length; i++) {
-    const [user, bal] = data[i].split(',');
-    if (user === username) return parseInt(bal);
-  }
-  return 0;
-}
-
-function logGame(username, game, play, outcome, note) {
-  const time = new Date().toISOString();
-  fs.appendFileSync('results.csv', `${username},${game},${play},${outcome},${note},${time}\n`);
-  if (note.startsWith("CASHOUT")) {
-    fs.appendFileSync('cashouts.csv', `${username},${game},${note},${time}\n`);
-  }
-}
-
-app.post('/coinflip', (req, res) => {
-  const { username, doubleDown } = req.body;
-  const cost = doubleDown ? 20 : 10;
-  if (getBalance(username) < cost) return res.json({ message: "Not enough Rhys Coins" });
-  updateBalance(username, -cost);
-  const outcome = Math.random() < 0.56 ? "Bot Wins" : "Player Wins";
-  const note = outcome === "Player Wins"
-    ? doubleDown ? "CASHOUT: 40 skins" : "CASHOUT: 20 skins"
-    : "-";
-  logGame(username, "CoinFlip", doubleDown ? "Double Down" : "Flip", outcome, note);
-  res.json({ message: outcome });
 });
 
-app.post('/blackjack', (req, res) => {
-  const { username, doubleDown } = req.body;
-  const cost = doubleDown ? 40 : 20;
-  if (getBalance(username) < cost) return res.json({ message: "Not enough Rhys Coins" });
-  updateBalance(username, -cost);
-  const outcome = Math.random() < 0.45 ? "Player Wins" : "Bot Wins";
-  const note = outcome === "Player Wins"
-    ? doubleDown ? "CASHOUT: 2000 skins" : "CASHOUT: 1000 skins"
-    : "-";
-  logGame(username, "Blackjack", doubleDown ? "Double Down" : "Play", outcome, note);
-  res.json({ message: outcome });
+// Update balance after win
+app.post("/win", (req, res) => {
+  const { player, amount } = req.body;
+  db.run("INSERT INTO results (player, result, amount) VALUES (?, 'win', ?)", [player, amount]);
+  db.run("INSERT INTO balances (player, balance) VALUES (?, ?) ON CONFLICT(player) DO UPDATE SET balance = balance + ?",
+    [player, amount, amount],
+    (err) => {
+      if (err) return res.status(500).json({ error: "DB error" });
+      res.json({ success: true });
+    }
+  );
 });
 
-app.post('/roulette', (req, res) => {
-  const { username, doubleDown } = req.body;
-  const cost = doubleDown ? 10 : 5;
-  if (getBalance(username) < cost) return res.json({ message: "Not enough Rhys Coins" });
-  updateBalance(username, -cost);
-  const number = Math.ceil(Math.random() * 10);
-  const outcome = number === 7 ? "Player Wins" : "Bot Wins";
-  const note = outcome === "Player Wins"
-    ? doubleDown ? "CASHOUT: 10x payout" : "CASHOUT: 5x payout"
-    : "-";
-  logGame(username, "Roulette", doubleDown ? "Double Down" : "Play", outcome, note);
-  res.json({ message: `${outcome} (Number: ${number})` });
+// Cash out
+app.post("/cashout", (req, res) => {
+  const { player } = req.body;
+  db.get("SELECT balance FROM balances WHERE player = ?", [player], (err, row) => {
+    if (err || !row) return res.status(500).json({ error: "DB error" });
+    const cashoutAmount = row.balance;
+    db.run("INSERT INTO cashouts (player, amount) VALUES (?, ?)", [player, cashoutAmount]);
+    db.run("UPDATE balances SET balance = 0 WHERE player = ?", [player]);
+    res.json({ player, cashedOut: cashoutAmount });
+  });
 });
 
-app.post('/buy', (req, res) => {
-  const { username, amount } = req.body;
-  const coins = parseInt(amount) * 100;
-  updateBalance(username, coins);
-  const time = new Date().toISOString();
-  fs.appendFileSync('purchases.csv', `${username},${amount},${coins},${time}\n`);
-  res.json({ message: `Added ${coins} coins to ${username}` });
+// Start server
+app.listen(port, () => {
+  console.log(`🚀 Server running on http://localhost:${port}`);
 });
-
-app.post('/admin', (req, res) => {
-  const { admin } = req.body;
-  if (admin !== adminEmail) return res.json({ message: "Unauthorized" });
-  const balances = fs.readFileSync('balances.csv', 'utf8');
-  res.json({ message: balances });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
