@@ -1,3 +1,4 @@
+
 const express = require('express');
 const fs = require('fs');
 const app = express();
@@ -45,20 +46,11 @@ app.post('/coinflip', (req, res) => {
   if (getBalance(username) < cost) return res.json({ message: "Not enough Rhys Coins" });
   updateBalance(username, -cost);
   const outcome = Math.random() < 0.56 ? "Bot Wins" : "Player Wins";
-  let note = "-";
-  if (outcome === "Player Wins") {
-    note = doubleDown ? "CASHOUT: 40 skins" : "CASHOUT: 20 skins";
-  }
+  const note = outcome === "Player Wins"
+    ? doubleDown ? "CASHOUT: 40 skins" : "CASHOUT: 20 skins"
+    : "-";
   logGame(username, "CoinFlip", doubleDown ? "Double Down" : "Flip", outcome, note);
   res.json({ message: outcome });
-});
-  const { username } = req.body;
-  if (getBalance(username) < 10) return res.json({ message: "Not enough Rhys Coins" });
-  updateBalance(username, -10);
-  const outcome = Math.random() < 0.56 ? "Bot Wins" : "Player Wins";
-  let note = outcome === "Player Wins" ? "CASHOUT: 20 skins" : "-";
-  logGame(username, "CoinFlip", "Flip", outcome, note);
-  res.json({ message: `${outcome}` });
 });
 
 app.post('/blackjack', (req, res) => {
@@ -67,20 +59,11 @@ app.post('/blackjack', (req, res) => {
   if (getBalance(username) < cost) return res.json({ message: "Not enough Rhys Coins" });
   updateBalance(username, -cost);
   const outcome = Math.random() < 0.45 ? "Player Wins" : "Bot Wins";
-  let note = "-";
-  if (outcome === "Player Wins") {
-    note = doubleDown ? "CASHOUT: 2000 skins" : "CASHOUT: 1000 skins";
-  }
+  const note = outcome === "Player Wins"
+    ? doubleDown ? "CASHOUT: 2000 skins" : "CASHOUT: 1000 skins"
+    : "-";
   logGame(username, "Blackjack", doubleDown ? "Double Down" : "Play", outcome, note);
   res.json({ message: outcome });
-});
-  const { username } = req.body;
-  if (getBalance(username) < 20) return res.json({ message: "Not enough Rhys Coins" });
-  updateBalance(username, -20);
-  const outcome = Math.random() < 0.45 ? "Player Wins" : "Bot Wins";
-  let note = outcome === "Player Wins" ? "CASHOUT: 1000 skins" : "-";
-  logGame(username, "Blackjack", "Play", outcome, note);
-  res.json({ message: `${outcome}` });
 });
 
 app.post('/roulette', (req, res) => {
@@ -90,20 +73,10 @@ app.post('/roulette', (req, res) => {
   updateBalance(username, -cost);
   const number = Math.ceil(Math.random() * 10);
   const outcome = number === 7 ? "Player Wins" : "Bot Wins";
-  let note = "-";
-  if (outcome === "Player Wins") {
-    note = doubleDown ? "CASHOUT: 10x payout" : "CASHOUT: 5x payout";
-  }
+  const note = outcome === "Player Wins"
+    ? doubleDown ? "CASHOUT: 10x payout" : "CASHOUT: 5x payout"
+    : "-";
   logGame(username, "Roulette", doubleDown ? "Double Down" : "Play", outcome, note);
-  res.json({ message: `${outcome} (Number: ${number})` });
-});
-  const { username } = req.body;
-  if (getBalance(username) < 5) return res.json({ message: "Not enough Rhys Coins" });
-  updateBalance(username, -5);
-  const number = Math.ceil(Math.random() * 10);
-  const outcome = number === 7 ? "Player Wins" : "Bot Wins"; // fixed win condition
-  let note = outcome === "Player Wins" ? "CASHOUT: 5x payout" : "-";
-  logGame(username, "Roulette", number, outcome, note);
   res.json({ message: `${outcome} (Number: ${number})` });
 });
 
